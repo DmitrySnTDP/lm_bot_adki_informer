@@ -7,7 +7,7 @@ API_ID = 36470021
 API_HASH = 'aaeaf27aa86d03212c47b90bb01783c7'
 SESSION_NAME = 'usertest_session'
 
-TARGET_CHANNELS = ['@mknewsru']
+TARGET_CHANNELS = ['@LmNewsEx']
 
 logging.basicConfig(
     level=logging.INFO,
