@@ -1,14 +1,13 @@
 import asyncio
-from datetime import datetime, timezone, timedelta
-import sys
-import time
+from datetime import datetime, timedelta, timezone
+import json
 import os
+import threading
+import time
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 import logging
 import telebot
-import threading
-import json
 
 
 with open('settings.json', "r", encoding="utf-8") as file:
@@ -35,8 +34,6 @@ def update_settings(new_preset):
             break
 
 
-
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -46,7 +43,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 bot_helper_thread = None
-bot_hear_thread = None
 
 load_dotenv("ini.env")
 api_id = int(os.getenv("API_ID"))
@@ -55,8 +51,7 @@ bot_token = os.getenv("BOT_TOKEN")
 session_name = os.getenv("USER_SESSION_NAME")
 
 if not all([api_id, api_hash, bot_token, session_name]):
-    raise ValueError("API_ID и API_HASH должны быть установлены в .env файле")
-
+    raise ValueError("API_ID and API_HASH must be set in the .env file.")
 
 target_ch_ids = [-1001336280776, -1002155382308]
 target_words = ["Артефакты", "СТРАЖНИК", "МАСТЕР ОГНЯ"]
@@ -68,10 +63,61 @@ new_settings = {
     "events" : []
 }
 
+base_wait_time = 15
+wait_time = 15
+
+
 bot = telebot.TeleBot(bot_token)
 
 target_chat_id = -1003126398626
+# target_chat_id = 5314192316 # for tests
 target_thread_id = 2452
+
+text="""Мои команды:\n1️⃣ /help - открывает описание функционала\n2️⃣ /start - запустить бота (актуально для лс)*\n3️⃣ /stop - остановить бота*\n4️⃣ /settings - настроить фильтры для создания уведомлений\n\n*️⃣ - находится на стадии разработки\n\n⚙️ Принцип работы настроек:\n1️⃣ Вызвать команду /settings в нужной теме группы.\n2️⃣ В появившемся меню выбираем "Настроить события" для детального выбора событий или "По умолчанию", чтобы вернуть стандартные настройки.\n➡️ Далее описание принципа работы детальных настроек.\n3️⃣ После выбора детальных настроек, появляется меню выбора медали (стражник, мастер огня или без медалей).\n4️⃣ После выбора, откроется меню со списком видов событий (пакты, охота, исследования и т.д.), нажимаем все необходимые варианты, после чего нажимаем сохранить.\n❕❕❕Пример работы: выбрали Настроить события ➡️ Стражник ➡️ Артефакты, Пакты, Стройка ➡️ Сохранить. Эта комбинация включит уведомления для событий на артефакты или пакты или стройки, содержащие медали стражника.\n5️⃣ Повторить для всех видов медалей при необходимости.\n6️⃣ Нажать "Закрыть" в меню настроек, оно исчезнет после этого через 3 секунды.\n\n❗️ выбор параметра по умолчанию настраивает уведомления так: все события с медалями и любые адки на артефакты""",
+
+@bot.message_handler(commands=["help"])
+def send_start_message(message):
+    chat_id = message.chat.id
+    thread_id = message.message_thread_id
+    # if (chat_id == target_chat_id and thread_id == target_thread_id) or chat_id != target_chat_id:
+    bot.send_message(
+        chat_id=chat_id,
+        message_thread_id=thread_id,
+        text=
+"""Мои команды:
+1️⃣ /help - открывает описание функционала
+2️⃣ /start - запустить бота (актуально для лс)*
+3️⃣ /stop - остановить бота*
+4️⃣ /settings - настроить фильтры для создания уведомлений
+
+*️⃣ - находится на стадии разработки
+
+⚙️ Принцип работы настроек:
+1️⃣ Вызвать команду /settings в нужной теме группы.
+2️⃣ В появившемся меню выбираем "Настроить события" для детального выбора событий или "По умолчанию", чтобы вернуть стандартные настройки.
+➡️ Далее описание принципа работы детальных настроек.
+3️⃣ После выбора детальных настроек, появляется меню выбора медали (стражник, мастер огня или без медалей).
+4️⃣ После выбора, откроется меню со списком видов событий (пакты, охота, исследования и т.д.), нажимаем все необходимые варианты, после чего нажимаем сохранить.
+❕❕❕Пример работы: выбрали Настроить события ➡️ Стражник ➡️ Артефакты, Пакты, Стройка ➡️ Сохранить. Эта комбинация включит уведомления для событий на артефакты или пакты или стройки, содержащие медали стражника.
+5️⃣ Повторить для всех видов медалей при необходимости.
+6️⃣ Нажать "Закрыть" в меню настроек, оно исчезнет после этого через 3 секунды.
+
+❗️ выбор параметра по умолчанию настраивает уведомления так: все события с медалями и любые адки на артефакты""",
+    )
+    logger.info(f"command {message.text} processed!")
+
+
+@bot.message_handler(commands=["start"])
+def send_start_message(message):
+    chat_id = message.chat.id
+    thread_id = message.message_thread_id
+    if (chat_id == target_chat_id and thread_id == target_thread_id) or chat_id != target_chat_id:
+        bot.send_message(
+            chat_id=chat_id,
+            message_thread_id=thread_id,
+            text="Привет!",
+        )
+    logger.info(f"command {message.text} processed!")
 
 
 @bot.message_handler(commands=["settings"])
@@ -81,14 +127,14 @@ def handle_panel_settings(message):
 
     markup = telebot.types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        telebot.types.InlineKeyboardButton("Задать события с медалями", callback_data="set_with_medals"),
-        telebot.types.InlineKeyboardButton("Задать события без медалей", callback_data="set_without_medals"),
+        telebot.types.InlineKeyboardButton("Настроить события", callback_data="set_evs_medal"),
         telebot.types.InlineKeyboardButton("По умолчанию", callback_data="set_default"),
         telebot.types.InlineKeyboardButton("Закрыть", callback_data="close"),
     )
 
 
     if chat_id == target_chat_id and thread_id == target_thread_id:
+    # if chat_id == target_chat_id: # for tests
         bot.send_message(
             chat_id=chat_id,
             message_thread_id=thread_id,
@@ -117,28 +163,35 @@ def handle_text_input(call):
 
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
-            telebot.types.InlineKeyboardButton("Задать события с медалями", callback_data="set_with_medals"),
-            telebot.types.InlineKeyboardButton("Задать события без медалей", callback_data="set_without_medals"),
+            telebot.types.InlineKeyboardButton("Настроить события", callback_data="set_evs_medal"),
             telebot.types.InlineKeyboardButton("По умолчанию", callback_data="set_default"),
             telebot.types.InlineKeyboardButton("Закрыть", callback_data="close"),
         )
         send_text = "Меню настроек:"
 
-    elif call.data == "set_with_medals":
+    elif call.data == "set_evs_medal":
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         buttons = [telebot.types.InlineKeyboardButton(m, callback_data=m) for m in medal_list if m.lower() not in new_settings.get('medals')]
-        buttons.append(telebot.types.InlineKeyboardButton("Сохранить", callback_data="set_events"))
+        buttons.append(telebot.types.InlineKeyboardButton("Без медалей", callback_data="без медалей"))
         for b in buttons:
             markup.add(b)
-        send_text = "Выберите нужные варианты, а затем нажмите \"Сохранить\"."
+        send_text = "Выберите нужную медаль:"
 
-    elif call.data == "set_without_medals" or call.data == "set_events":
+    elif call.data == "без медалей" or call.data in medal_list:
+        if call.data in medal_list:
+            new_settings["medals"].append(call.data.lower())
+        bot.answer_callback_query(call.id, text=f"Выбрано {call.data}")
+
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         buttons = [telebot.types.InlineKeyboardButton(e, callback_data=e) for e in events_list if e.lower() not in new_settings.get('events')]
         buttons.append(telebot.types.InlineKeyboardButton("Сохранить", callback_data="go_to_settings"))
         for b in buttons:
             markup.add(b)
-        send_text = "Выбери нужные события в категории, а после нажмите \"Сохранить\"."
+        if len(new_settings["medals"]) == 0:
+            medal_str = "без медалей"
+        else:
+            medal_str = ", ".join(new_settings["medals"])
+        send_text = f"Выбери нужные события для {medal_str}, а после нажмите \"Сохранить\"."
 
     elif call.data == "set_default":
         bot.answer_callback_query(call.id, text="Установлены настройки по умолчанию!")
@@ -146,16 +199,6 @@ def handle_text_input(call):
         print(def_settings)
         write_settings(settings)
         return
-
-    elif call.data in medal_list:
-        new_settings["medals"].append(call.data.lower())
-        bot.answer_callback_query(call.id, text=f"Добавлено {call.data}")
-
-        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-        buttons = [telebot.types.InlineKeyboardButton(m, callback_data=m) for m in medal_list if m.lower() not in new_settings.get('medals')]
-        buttons.append(telebot.types.InlineKeyboardButton("Сохранить", callback_data="set_events"))
-        for b in buttons:
-            markup.add(b)
     
     elif call.data in events_list:
         new_settings["events"].append(call.data.lower())
@@ -194,34 +237,43 @@ def handle_text_input(call):
         )
 
 
-def send_to_thread(text: str, thread_id):
+def send_to_thread(text: str, chat_id, thread_id=None):
     try:        
         bot.send_message(
-            chat_id=target_chat_id,
+            chat_id=chat_id,
             message_thread_id=thread_id,
             text=text,
             parse_mode='HTML'
         )
-        logger.info(f"Message sent to thread {thread_id}")
+        logger.info(f"Message was send to thread {thread_id}")
         
     except Exception as e:
         logger.error(f"Sending error: {e}")
 
 
-client = TelegramClient(session_name, api_id, api_hash)
+client = TelegramClient(session_name, api_id, api_hash, connection_retries = 0, auto_reconnect = False, timeout=30, request_retries=3)
 
 
 async def main():
-    global bot_helper_thread
+    global restart_count, client, bot_helper_thread
 
-
+    client = TelegramClient(session_name, api_id, api_hash, connection_retries = 0, auto_reconnect = False, timeout=30, request_retries=3)
+    bot_helper_thread = threading.Thread(target=bot.polling, daemon=True)
+    bot_helper_thread.start()
+    
     @client.on(events.NewMessage(incoming=True, chats=target_ch_ids))
     async def handle_channel_posts(event):
+
         mess = event.message
         chat = await event.get_chat()
-        logger.info(f"Received post from the channel: {mess.chat.title}")
+        await process_message(mess, chat)
+        
+
+    async def process_message(mess, chat):
+        global restart_count
+
+        restart_count = 0
         text = mess.text.lower()
-        output = ""
 
         time_now = datetime.now(timezone.utc).replace(microsecond=0)
 
@@ -234,62 +286,90 @@ async def main():
 
         if min_time < mess.date < max_time:
             logger.info(f"my time: {time_now}")
+            output = ""
             for preset in settings:
-                if len(preset.get("events")) < 1:
+                if len(preset.get("events")) < 1 or (len(preset.get("medals")) > 0 and preset.get("medals")[0] not in text):
                     continue
-                evs = []
-                for ev in preset.get("events"):
-                    if ev in text:
-                        evs.append(ev)
+                evs = [ev for ev in preset.get("events") if ev in text]
+                print(evs, preset.get("medals"))
                 if len(evs) > 0:
-                    if len(preset.get("medals")) > 0:
-                        for m in preset.get("medals"):
-                            if m in text:
-                                output = f", {m}"
-                    vals = ", ".join(evs)
                     if "24-часовое испытание" in text:
-                        output = f"24-часовое испытание: {vals}{output}!"
+                        output = f"24-часовое испытание: "
                     else:
-                        output = f"Адское событие: {vals}{output}!"
+                        output = f"Адское событие: "
+                    vals = ", ".join(evs + list(map(lambda m: m.upper(), preset.get("medals"))))
+                    output += f"{vals}"
+
+                    print(output)
+                    send_to_thread(output, target_chat_id, target_thread_id)
+                    # send_to_thread(output, target_chat_id) # for tests
+                    logger.info(f"Message prepared: {output}")
                     break
-            send_to_thread(output, target_thread_id)       
-            logger.info(f"Message prepared: {output}")
-                
-            # if any(t in mess.text for t in target_words):
-            #     targets_in = [t for t in target_words if t in mess.text]
-
-            #     if len(targets_in) == 1 and targets_in[0] in target_words[1:]:
-            #         targets_in = [mess.text.split(" (")[0], targets_in[0]]
-            #     targets_text = str.join(", ", targets_in)
-            #     value = f"Адское событие: {targets_text}!"
-
-            #     logger.info(f"Подготовлено сообщение: {value}")
-            #     send_to_thread(value, target_thread_id)
         else:
             logger.error(f"The message is not in the timings: {mess.date}")
 
         await client.send_read_acknowledge(entity=chat, message=mess)
         logger.info("message processing completed")
 
-    bot_helper_thread = threading.Thread(target=bot.polling, daemon=True)
-    bot_helper_thread.start()
 
-    async with client:
+    async def check_unread_messagges():
+        dialogs = await client.get_dialogs()
+        target_dialogs = [d for d in dialogs if d.id in target_ch_ids]
+
+        for t_d in target_dialogs:
+            if t_d.is_channel and t_d.unread_count > 0:
+                messages = await client.get_messages(
+                    t_d.entity,
+                    limit=t_d.unread_count,
+                )
+                if messages:
+                    for message in messages:
+                        await process_message(message, t_d.id)
+        logger.info("all unread_message was processed")
+    
+
+    try:
+        await client.start()
         me = await client.get_me()
-        logger.info(f"lmBot running with name: {me.first_name}")
-        logger.info("Wait message from channels...")
-        
-        await asyncio.Future()
+        logger.info(f"lmBot started witn name: {me.first_name}")
+        await check_unread_messagges()
+        logger.info("Wait messages from chats...")
+        await client.run_until_disconnected()
+            
+    except (ConnectionError, ConnectionAbortedError, ConnectionResetError, TimeoutError) as e:
+        logger.error(f"disconnect with err: {e}")
+        raise e
+    finally:
+        if client.is_connected():
+            await client.disconnect()
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Stopped by user")
-    except Exception as e:
-        logger.error(f"{e}")
-        if "Connection to Telegram failed 5 time(s)" in e:
-            time.sleep(5)
-            logger.info("wait 5 seconds and restart")
+    max_restart_count = 120
+    restart_count = 0
+    while restart_count < max_restart_count:
+        if restart_count == 0:
+            logger.info("start")
+        else:
+            logger.info("restart")
+
+        try:
+            asyncio.run(main())
+            asyncio.Future()
+            
+        except KeyboardInterrupt:
+            logger.info("Stopped by user")
+            break
+        except (ConnectionError, ConnectionAbortedError, ConnectionResetError, TimeoutError) as e:
+            logger.info(f"connection error: {e}")
+            restart_count += 1
+            wait_time = min(base_wait_time*restart_count, 600)
+            logger.info(f"wait {wait_time} seconds and restart")
+            time.sleep(wait_time)
+        except Exception as e:
+            logger.error(f"unknown err: {e}")
+            restart_count += 1
+            wait_time = min(base_wait_time*restart_count, 600)
+            logger.info(f"wait {wait_time} seconds and restart")
+            time.sleep(wait_time)
             
