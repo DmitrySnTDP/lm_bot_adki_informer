@@ -258,8 +258,6 @@ async def main():
     global restart_count, client, bot_helper_thread
 
     client = TelegramClient(session_name, api_id, api_hash, connection_retries = 0, auto_reconnect = False, timeout=30, request_retries=3)
-    bot_helper_thread = threading.Thread(target=bot.polling, daemon=True)
-    bot_helper_thread.start()
     
     @client.on(events.NewMessage(incoming=True, chats=target_ch_ids))
     async def handle_channel_posts(event):
@@ -347,6 +345,8 @@ async def main():
 if __name__ == "__main__":
     max_restart_count = 120
     restart_count = 0
+    bot_helper_thread = threading.Thread(target=bot.polling, daemon=True)
+    bot_helper_thread.start()
     while restart_count < max_restart_count:
         if restart_count == 0:
             logger.info("start")
