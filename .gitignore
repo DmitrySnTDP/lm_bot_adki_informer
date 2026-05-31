@@ -2,3 +2,7 @@
 *.session-journal
 *.log
 *.env
+__pycache__
+logs
+lm_bot_db_log.ldf
+lm_bot_db.mdf
