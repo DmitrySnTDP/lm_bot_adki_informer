@@ -5,7 +5,6 @@ import threading
 import time
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
-# import logging
 import telebot
 from random import randint
 from database import Database, logger
@@ -18,11 +17,9 @@ api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
 bot_token = os.getenv("BOT_TOKEN")
 session_name = os.getenv("USER_SESSION_NAME")
-
-if not all([api_id, api_hash, bot_token, session_name]):
+target_ch_ids = [int(t) for t in os.getenv("TARGET_IDS").split("_")]
+if not all([api_id, api_hash, bot_token, session_name, target_ch_ids]):
     raise ValueError("API_ID and API_HASH must be set in the .env file.")
-
-target_ch_ids = [-1001336280776, -1002155382308]
 
 
 base_wait_time = 15
@@ -755,23 +752,25 @@ def handle_text_input(call):
 
 async def send_messages(medal: str, evs: list, text: str):
     medal_id = bot_db.execute_query("select MedID from Medal where MedName = ?", (medal,))[0][0]
+    targets_dict = dict()
     for ev in evs:
         ev_id = bot_db.execute_query("select EventID from EventType where EventName = ?", (ev,))[0][0]
         targets = bot_db.query_procedure("GetTargetsByMedalAndEvent", medal_id, ev_id)
-        if len(targets) < 1:
-            return
-        for target in targets:
-            target_type = target[0]
-            target_id = target[1]
-            if target_type == "Local":
-                thread_id = None
-            else:
-                thread_id = bot_db.execute_query("select ThemeID from GroupTarget where GroupID = ?", (target_id,))[0][0]
-            bot.send_message(
-                text=text,
-                chat_id=target_id,
-                message_thread_id=thread_id
-            )
+        if len(targets) >= 1:
+            for t in targets:
+                targets_dict[t[1]] = t[0]
+                
+
+    for target in targets_dict.keys():
+        if targets_dict[target] == "Local":
+            thread_id = None
+        else:
+            thread_id = bot_db.execute_query("select ThemeID from GroupTarget where GroupID = ?", (target,))[0][0]
+        bot.send_message(
+            text=text,
+            chat_id=target,
+            message_thread_id=thread_id
+        )
 
 
 
@@ -791,8 +790,6 @@ def run_bot_with_retry(timewait = 1):
             logger.warning(f"Restart telebot after {timewait} sec timeout")
             time.sleep(timewait)
 
-
-# client = TelegramClient(session_name, api_id, api_hash, connection_retries = 0, auto_reconnect = False, timeout=30, request_retries=3)
 
 async def main():
     global restart_count, client, bot_helper_thread
